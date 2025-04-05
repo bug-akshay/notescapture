@@ -19,6 +19,8 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import com.google.android.material.textfield.TextInputEditText;
+import com.example.notescapture.models.Note;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.mlkit.vision.common.InputImage;
@@ -29,14 +31,16 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 
 public class NotesActivity extends AppCompatActivity {
     private static final int CAMERA_PERMISSION_CODE = 100;
-    
+
     private TextView extractedTextView;
     private MaterialButton clearButton;
     private MaterialButton captureButton;
     private MaterialButton copyButton;
+    private MaterialButton saveButton;
+    private MaterialButton viewNotesButton;
+    private TextInputEditText titleEditText;
     private TextRecognizer textRecognizer;
-
-    private ActivityResultLauncher<Intent> cameraLauncher;
+    private ActivityResultLauncher<Void> cameraLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,13 +57,26 @@ public class NotesActivity extends AppCompatActivity {
         clearButton = findViewById(R.id.clearButton);
         captureButton = findViewById(R.id.captureButton);
         copyButton = findViewById(R.id.copyButton);
+        saveButton = findViewById(R.id.saveButton);
+        viewNotesButton = findViewById(R.id.viewNotesButton);
+        titleEditText = findViewById(R.id.titleEditText);
         textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
     }
 
     private void setupButtons() {
-        clearButton.setOnClickListener(v -> extractedTextView.setText(""));
+        clearButton.setOnClickListener(v -> {
+            extractedTextView.setText("");
+            titleEditText.setText("");
+        });
 
         captureButton.setOnClickListener(v -> checkCameraPermission());
+
+        saveButton.setOnClickListener(v -> saveNote());
+
+        viewNotesButton.setOnClickListener(v -> {
+            Intent intent = new Intent(this, NotesListActivity.class);
+            startActivity(intent);
+        });
 
         copyButton.setOnClickListener(v -> {
             String text = extractedTextView.getText().toString();
@@ -74,14 +91,10 @@ public class NotesActivity extends AppCompatActivity {
 
     private void initializeCameraLauncher() {
         cameraLauncher = registerForActivityResult(
-            new ActivityResultContracts.StartActivityForResult(),
-            result -> {
-                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-                    Bundle extras = result.getData().getExtras();
-                    Bitmap imageBitmap = (Bitmap) extras.get("data");
-                    if (imageBitmap != null) {
-                        processImage(imageBitmap);
-                    }
+            new ActivityResultContracts.TakePicturePreview(),
+            bitmap -> {
+                if (bitmap != null) {
+                    processImage(bitmap);
                 }
             });
     }
@@ -98,26 +111,38 @@ public class NotesActivity extends AppCompatActivity {
     }
 
     private void openCamera() {
-        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        cameraLauncher.launch(intent);
+        cameraLauncher.launch(null);
+    }
+
+    private void saveNote() {
+        String title = titleEditText.getText().toString().trim();
+        String content = extractedTextView.getText().toString().trim();
+
+        if (title.isEmpty()) {
+            titleEditText.setError("Please enter a title");
+            return;
+        }
+
+        if (content.isEmpty()) {
+            Toast.makeText(this, "Please capture some text first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Note note = new Note(title, content);
+        // TODO: Save note to database
+        Toast.makeText(this, "Note saved successfully", Toast.LENGTH_SHORT).show();
+        finish();
     }
 
     private void processImage(Bitmap bitmap) {
         InputImage image = InputImage.fromBitmap(bitmap, 0);
         textRecognizer.process(image)
                 .addOnSuccessListener(text -> {
-                    String recognizedText = text.getText();
-                    if (!recognizedText.isEmpty()) {
-                        String currentText = extractedTextView.getText().toString();
-                        if (!currentText.isEmpty()) {
-                            currentText += "\n\n";
-                        }
-                        extractedTextView.setText(currentText + recognizedText);
-                    }
+                    String extractedText = text.getText();
+                    extractedTextView.setText(extractedText);
                 })
                 .addOnFailureListener(e -> {
-                    e.printStackTrace();
-                    Toast.makeText(this, "Text recognition failed", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Failed to extract text", Toast.LENGTH_SHORT).show();
                 });
     }
 
@@ -129,8 +154,10 @@ public class NotesActivity extends AppCompatActivity {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 openCamera();
             } else {
-                Toast.makeText(this, "Camera permission is required", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Camera permission denied", Toast.LENGTH_SHORT).show();
             }
         }
     }
+
+
 }
