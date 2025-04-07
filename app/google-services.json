@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "332289391599",
+    "firebase_url": "https://notecapture-9542b-default-rtdb.firebaseio.com",
+    "project_id": "notecapture-9542b",
+    "storage_bucket": "notecapture-9542b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:332289391599:android:48a9d4c1e7861c1563141a",
+        "android_client_info": {
+          "package_name": "com.example.notescapture"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCD9l3dUqMS3PHQhT0XITGtLQhAj-kPf1Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

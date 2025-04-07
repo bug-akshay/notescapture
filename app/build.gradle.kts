@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.google.gms.google.services)
 }
 
 android {
@@ -46,6 +47,10 @@ dependencies {
 
     // ML Kit for OCR
     implementation("com.google.mlkit:text-recognition:16.0.0")
+    implementation(libs.firebase.database)
+
+    implementation ("com.google.firebase:firebase-database:21.0.0")
+    implementation(libs.firebase.auth)
 
     // Testing
     testImplementation(libs.junit)
