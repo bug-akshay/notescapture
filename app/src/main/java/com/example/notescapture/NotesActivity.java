@@ -28,6 +28,10 @@ import com.google.mlkit.vision.text.Text;
 import com.google.mlkit.vision.text.TextRecognition;
 import com.google.mlkit.vision.text.TextRecognizer;
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
 public class NotesActivity extends AppCompatActivity {
     private static final int CAMERA_PERMISSION_CODE = 100;
@@ -41,11 +45,17 @@ public class NotesActivity extends AppCompatActivity {
     private TextInputEditText titleEditText;
     private TextRecognizer textRecognizer;
     private ActivityResultLauncher<Void> cameraLauncher;
+    private FirebaseAuth mAuth;
+    private DatabaseReference databaseReference;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_notes);
+
+        // Initialize Firebase
+        mAuth = FirebaseAuth.getInstance();
+        databaseReference = FirebaseDatabase.getInstance().getReference("notes");
 
         initializeViews();
         setupButtons();
@@ -128,10 +138,29 @@ public class NotesActivity extends AppCompatActivity {
             return;
         }
 
+        // Get current user
+        FirebaseUser user = mAuth.getCurrentUser();
+        if (user == null) {
+            Toast.makeText(this, "Please sign in to save notes", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Create note with timestamp
         Note note = new Note(title, content);
-        // TODO: Save note to database
-        Toast.makeText(this, "Note saved successfully", Toast.LENGTH_SHORT).show();
-        finish();
+        String noteId = databaseReference.child(user.getUid()).push().getKey();
+        
+        if (noteId != null) {
+            databaseReference.child(user.getUid()).child(noteId).setValue(note)
+                .addOnSuccessListener(aVoid -> {
+                    Toast.makeText(this, "Note saved successfully", Toast.LENGTH_SHORT).show();
+                    // Clear the form after successful save
+                    extractedTextView.setText("");
+                    titleEditText.setText("");
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "Failed to save note: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+        }
     }
 
     private void processImage(Bitmap bitmap) {
@@ -158,6 +187,4 @@ public class NotesActivity extends AppCompatActivity {
             }
         }
     }
-
-
 }

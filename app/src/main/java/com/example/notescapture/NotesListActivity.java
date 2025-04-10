@@ -3,6 +3,7 @@ package com.example.notescapture;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.MenuItem;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -12,6 +13,13 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.notescapture.adapters.NotesAdapter;
 import com.example.notescapture.models.Note;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +28,8 @@ public class NotesListActivity extends AppCompatActivity implements NotesAdapter
     private RecyclerView recyclerView;
     private NotesAdapter adapter;
     private List<Note> notes;
+    private DatabaseReference notesRef;
+    private ValueEventListener notesListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,15 +57,41 @@ public class NotesListActivity extends AppCompatActivity implements NotesAdapter
             startActivity(intent);
         });
 
-        loadNotes();
+        // Initialize Firebase
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            notesRef = FirebaseDatabase.getInstance().getReference("notes").child(currentUser.getUid());
+            loadNotes();
+        }
     }
 
     private void loadNotes() {
-        // For now, adding sample notes
-        notes.clear();
-        notes.add(new Note("Sample Note 1", "This is a sample note content."));
-        notes.add(new Note("Sample Note 2", "Another sample note content."));
-        adapter.setNotes(notes);
+        if (notesRef == null) return;
+
+        // Remove existing listener if present
+        if (notesListener != null) {
+            notesRef.removeEventListener(notesListener);
+        }
+
+        // Add new listener for real-time updates
+        notesListener = notesRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                notes.clear();
+                for (DataSnapshot noteSnapshot : snapshot.getChildren()) {
+                    Note note = noteSnapshot.getValue(Note.class);
+                    if (note != null) {
+                        notes.add(note);
+                    }
+                }
+                adapter.setNotes(notes);
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(NotesListActivity.this, "Error loading notes", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     @Override
